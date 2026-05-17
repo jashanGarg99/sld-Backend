@@ -1,52 +1,57 @@
 import os
-import time
-import base64
+import numpy as np
+import cv2
 
 from fastapi import FastAPI, File, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from ultralytics import YOLO
-import numpy as np
-import cv2
 
 app = FastAPI()
 
+# ✅ CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=["*"],  # change later in production
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-model = YOLO("best.pt")
+# ✅ Load model
+model = YOLO("./best.pt")
 
+# ✅ Health route (important for Render)
+@app.get("/")
+def home():
+    return {"message": "ASL API Running"}
+
+# ✅ Prediction route
 @app.post("/predict")
 async def predict(file: UploadFile = File(...)):
-    contents = await file.read()
-    
-    np_arr = np.frombuffer(contents, np.uint8)
-    img = cv2.imdecode(np_arr, cv2.IMREAD_COLOR)
-    # img = cv2.flip(img, 1)
-    img2 = img.copy()
-    # img = cv2.resize(img, (64, 64))
+    try:
+        contents = await file.read()
 
-    results = model(img)
+        np_arr = np.frombuffer(contents, np.uint8)
+        img = cv2.imdecode(np_arr, cv2.IMREAD_COLOR)
 
-    label = results[0].names[results[0].probs.top1]
-    confidence = results[0].probs.top1conf.item()
+        if img is None:
+            return {"error": "Invalid image"}
 
-    # Create folder
-    # os.makedirs("captures/original", exist_ok=True)
-    # os.makedirs("captures/result", exist_ok=True)
+        # Optional mirror
+        # img = cv2.flip(img, 1)
 
-    # Save original
-    # cv2.imwrite(f"captures/original/original_{int(time.time())}.jpg", img)
+        # Optional resize
+        # img = cv2.resize(img, (96, 96))
 
-    # Save annotated
-    # annotated = results[0].plot()
-    # cv2.imwrite(f"captures/result/result_{int(time.time())}.jpg", annotated)
+        results = model(img)
 
-    return {
-        "prediction": label,
-        "confidence": confidence
-    }
+        label = results[0].names[results[0].probs.top1]
+        confidence = float(results[0].probs.top1conf.item())
+
+        return {
+            "prediction": label,
+            "confidence": confidence
+        }
+
+    except Exception as e:
+        return {"error": str(e)}
