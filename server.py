@@ -2,11 +2,17 @@ import os
 import numpy as np
 import cv2
 
-from fastapi import FastAPI, File, UploadFile
+from fastapi import FastAPI, File, UploadFile, Request
 from fastapi.middleware.cors import CORSMiddleware
 from ultralytics import YOLO
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.util import get_remote_address
+from slowapi.errors import RateLimitExceeded
 
+limiter = Limiter(key_func=get_remote_address)
 app = FastAPI()
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 # ✅ CORS
 app.add_middleware(
@@ -22,12 +28,14 @@ model = YOLO("./best.pt")
 
 # ✅ Health route (important for Render)
 @app.get("/")
-def home():
+@limiter.limit("10/minute")
+def home(request: Request):
     return {"message": "ASL API Running"}
 
 # ✅ Prediction route
 @app.post("/predict")
-async def predict(file: UploadFile = File(...)):
+@limiter.limit("5/second;30/minute")
+async def predict(request: Request, file: UploadFile = File(...)):
     try:
         contents = await file.read()
 
