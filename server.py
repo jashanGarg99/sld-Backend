@@ -36,15 +36,15 @@ async def predict(file: UploadFile = File(...)):
     confidence = results[0].probs.top1conf.item()
 
     # Create folder
-    os.makedirs("captures/original", exist_ok=True)
-    os.makedirs("captures/result", exist_ok=True)
+    # os.makedirs("captures/original", exist_ok=True)
+    # os.makedirs("captures/result", exist_ok=True)
 
     # Save original
-    cv2.imwrite(f"captures/original/original_{int(time.time())}.jpg", img)
+    # cv2.imwrite(f"captures/original/original_{int(time.time())}.jpg", img)
 
     # Save annotated
-    annotated = results[0].plot()
-    cv2.imwrite(f"captures/result/result_{int(time.time())}.jpg", annotated)
+    # annotated = results[0].plot()
+    # cv2.imwrite(f"captures/result/result_{int(time.time())}.jpg", annotated)
 
     return {
         "prediction": label,
